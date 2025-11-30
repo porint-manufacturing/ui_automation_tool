@@ -97,6 +97,18 @@
   - CSVファイルが生成されること。
   - クリップボードにCSV形式の文字列がコピーされること。
 
+### 2.5. 多言語サポートの検証
+
+#### 2.5.1. 日本語エイリアスの検証 (`tests/verify_japanese_alias.py`)
+
+- **目的**: `AliasName` に日本語（マルチバイト文字）を使用しても正しく動作することを検証する。
+- **テスト内容**:
+  - 日本語のエイリアス名（例: "メモ帳テキストエリア"）を含むエイリアス定義ファイルを作成。
+  - そのエイリアスを使用するアクション定義ファイルを作成。
+  - Automatorで読み込み、正しくRPAパスに解決されるか確認。
+- **期待される結果**:
+  - 日本語エイリアスが文字化けせずに読み込まれ、対応するRPAパスに置換されること。
+
 ## 3. テスト実行方法
 
 以下のコマンドですべての検証スクリプトを実行できます。
@@ -106,6 +118,7 @@
 python tests/verify_logging.py
 python tests/verify_dry_run.py
 python tests/verify_screenshot.py
+python tests/verify_japanese_alias.py
 
 # 既存機能の検証
 python tests/verify_alias_feature.py
