@@ -1,0 +1,7 @@
+5,ButtonControl(ClassName='Button', foundIndex=38)
+プラス,ButtonControl(ClassName='Button', foundIndex=30)
+3,ButtonControl(ClassName='Button', foundIndex=36)
+等号,ButtonControl(ClassName='Button', foundIndex=31)
+CalculatorExpression,TextControl(foundIndex=14)
+CalculatorResults,TextControl(foundIndex=15)
+TogglePaneButton,ButtonControl(ClassName='Button', foundIndex=1)

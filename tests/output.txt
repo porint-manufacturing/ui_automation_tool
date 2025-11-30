@@ -1,0 +1,18 @@
+DEBUG: Automator type: <class 'automator.Automator'>
+DEBUG: Automator dir: ['__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'actions', 'aliases', 'execute_action', 'find_element_by_path', 'find_window', 'load_actions', 'load_aliases', 'run', 'variables']
+Launching Notepad...
+Notepad found: タイトルなし - メモ帳
+Parent of Doc: PaneControl (NotepadTextBox)
+Testing Path: PaneControl(ClassName='NotepadTextBox', foundIndex=1, searchDepth=1) -> DocumentControl(ClassName='RichEditD2DPT', foundIndex=1, searchDepth=1)
+  Searching descendant: {'ControlTypeName': 'PaneControl', 'Name': 'NotepadTextBox', 'ClassName': 'NotepadTextBox', 'searchDepth': 1} (Index: 1) under タイトルなし - メモ帳...
+DEBUG: Current: タイトルなし - メモ帳, Params: {'ControlTypeName': 'PaneControl', 'Name': 'NotepadTextBox', 'ClassName': 'NotepadTextBox', 'searchDepth': 1}, Index: 1
+  Not found: PaneControl(ClassName='NotepadTextBox', foundIndex=1, searchDepth=1)
+Automator Chained Path Verification: FAIL
+Element not found.
+Traceback (most recent call last):
+  File "C:\Users\shion\OneDrive\ドキュメント\automation\tests\verify_automator_chained_path.py", line 63, in <module>
+    verify_chained_path()
+  File "C:\Users\shion\OneDrive\ドキュメント\automation\tests\verify_automator_chained_path.py", line 60, in verify_chained_path
+    notepad.Close()
+    ^^^^^^^^^^^^^
+AttributeError: 'WindowControl' object has no attribute 'Close'

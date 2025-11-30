@@ -1,0 +1,15 @@
+Launching Notepad...
+Notepad: タイトルなし - メモ帳
+Target Child: PaneControl (NotepadTextBox)
+Path: PaneControl(ClassName='NotepadTextBox', searchDepth=1)
+Processing part: PaneControl(ClassName='NotepadTextBox', searchDepth=1)
+  Params: {'ControlTypeName': 'PaneControl', 'Name': 'NotepadTextBox', 'ClassName': 'NotepadTextBox', 'searchDepth': 1}, Index: 1
+  Target Exists: False
+  Target NOT found
+Traceback (most recent call last):
+  File "C:\Users\shion\OneDrive\ドキュメント\automation\debug\debug_automator_logic.py", line 74, in <module>
+    debug_logic()
+  File "C:\Users\shion\OneDrive\ドキュメント\automation\debug\debug_automator_logic.py", line 71, in debug_logic
+    notepad.Close()
+    ^^^^^^^^^^^^^
+AttributeError: 'WindowControl' object has no attribute 'Close'

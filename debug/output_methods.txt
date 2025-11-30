@@ -1,0 +1,16 @@
+Launching Notepad...
+Notepad: タイトルなし - メモ帳
+Target Child: PaneControl (NotepadTextBox)
+
+--- Test 1: Generic Control(ControlTypeName=...) ---
+Exists: True
+
+--- Test 2: Specific PaneControl() method ---
+Exists: True
+Traceback (most recent call last):
+  File "C:\Users\shion\OneDrive\ドキュメント\automation\debug\debug_uiautomation_methods.py", line 44, in <module>
+    debug_methods()
+  File "C:\Users\shion\OneDrive\ドキュメント\automation\debug\debug_uiautomation_methods.py", line 41, in debug_methods
+    notepad.Close()
+    ^^^^^^^^^^^^^
+AttributeError: 'WindowControl' object has no attribute 'Close'
