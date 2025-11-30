@@ -14,6 +14,7 @@ Python製のWindows UI自動化ツールキットです。`uiautomation` ライ�
   - **Modernモード**: AutomationIdを優先するモダンアプリ向け。
   - **Legacyモード**: ClassNameを優先するレガシーアプリ向け。
   - **Chained Path**: 親子関係を利用した高速で堅牢なパス生成。
+  - **Interactive Alias Mode**: 対話形式で効率的にエイリアスを作成。
   - CSV出力、クリップボードコピー、エイリアス定義テンプレート生成に対応。
 
 ## 必要要件
@@ -26,7 +27,7 @@ Python製のWindows UI自動化ツールキットです。`uiautomation` ライ�
 ## インストール
 
 ```bash
-# リポジトリのクローン
+# リポジリのクローン
 git clone <repository-url>
 cd automation
 
@@ -53,6 +54,9 @@ python inspector.py --mode legacy
 
 # エイリアス定義用のCSVテンプレートを作成（推奨）
 python inspector.py --output alias
+
+# 対話形式でエイリアスを作成（New!）
+python inspector.py --output interactive_alias
 ```
 
 - 要素をクリックすると、その要素のRPAパスが生成されます。
