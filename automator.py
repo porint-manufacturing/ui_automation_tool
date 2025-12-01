@@ -10,7 +10,7 @@ import datetime
 import uiautomation as auto
 
 class Automator:
-    def __init__(self, actions_file, log_file=None, log_level="INFO", dry_run=False):
+    def __init__(self, action_files, log_file=None, log_level="INFO", dry_run=False):
         self.actions = []
         self.variables = {}
         self.aliases = {}
@@ -30,48 +30,58 @@ class Automator:
         )
         self.logger = logging.getLogger(__name__)
         
-        self.csv_file = actions_file
+        # Ensure action_files is a list
+        if isinstance(action_files, str):
+            self.action_files = [action_files]
+        else:
+            self.action_files = action_files
+            
         if self.dry_run:
             self.logger.info("=== DRY RUN MODE ENABLED ===")
 
-    def load_aliases(self, alias_file):
-        """Loads aliases from a CSV file."""
-        self.logger.info(f"Loading aliases from {alias_file}...")
-        try:
-            with open(alias_file, 'r', encoding='utf-8-sig') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    alias = row.get("AliasName")
-                    path = row.get("RPA_Path")
-                    if alias and path:
-                        if alias in self.aliases:
-                            self.logger.warning(f"Duplicate alias '{alias}' found. Overwriting.")
-                        self.aliases[alias] = path
-            self.logger.info(f"Loaded {len(self.aliases)} aliases.")
-        except Exception as e:
-            self.logger.error(f"Error loading aliases: {e}")
-            sys.exit(1)
+    def load_aliases(self, alias_files):
+        """Loads aliases from one or more CSV files."""
+        if isinstance(alias_files, str):
+            alias_files = [alias_files]
+            
+        for alias_file in alias_files:
+            self.logger.info(f"Loading aliases from {alias_file}...")
+            try:
+                with open(alias_file, 'r', encoding='utf-8-sig') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        alias = row.get("AliasName")
+                        path = row.get("RPA_Path")
+                        if alias and path:
+                            if alias in self.aliases:
+                                self.logger.warning(f"Duplicate alias '{alias}' found in {alias_file}. Overwriting.")
+                            self.aliases[alias] = path
+            except Exception as e:
+                self.logger.error(f"Error loading aliases from {alias_file}: {e}")
+                sys.exit(1)
+        self.logger.info(f"Loaded {len(self.aliases)} aliases total.")
 
     def load_actions(self):
-        self.logger.info(f"Loading actions from {self.csv_file}...")
-        try:
-            with open(self.csv_file, 'r', encoding='utf-8-sig') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    # Resolve alias if present
-                    key = row.get("Key", "")
-                    if key and key in self.aliases:
-                        self.logger.debug(f"Resolved alias '{key}' -> '{self.aliases[key]}'")
-                        row["Key"] = self.aliases[key]
-                    
-                    self.actions.append(row)
-            self.logger.info(f"Loaded {len(self.actions)} actions.")
-        except FileNotFoundError:
-            self.logger.error(f"File not found: {self.csv_file}")
-            sys.exit(1)
-        except Exception as e:
-            self.logger.error(f"Error loading actions: {e}")
-            sys.exit(1)
+        for csv_file in self.action_files:
+            self.logger.info(f"Loading actions from {csv_file}...")
+            try:
+                with open(csv_file, 'r', encoding='utf-8-sig') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        # Resolve alias if present
+                        key = row.get("Key", "")
+                        if key and key in self.aliases:
+                            self.logger.debug(f"Resolved alias '{key}' -> '{self.aliases[key]}'")
+                            row["Key"] = self.aliases[key]
+                        
+                        self.actions.append(row)
+            except FileNotFoundError:
+                self.logger.error(f"File not found: {csv_file}")
+                sys.exit(1)
+            except Exception as e:
+                self.logger.error(f"Error loading actions from {csv_file}: {e}")
+                sys.exit(1)
+        self.logger.info(f"Loaded {len(self.actions)} actions total.")
 
     def run(self):
         for i, action in enumerate(self.actions):
@@ -469,15 +479,15 @@ class Automator:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Automator: Execute UI automation from CSV.")
-    parser.add_argument("csv_file", nargs='?', default="actions.csv", help="Path to the actions CSV file.")
-    parser.add_argument("--aliases", help="Path to the aliases CSV file.")
+    parser.add_argument("csv_files", nargs='+', default=["actions.csv"], help="Path to the actions CSV file(s).")
+    parser.add_argument("--aliases", nargs='+', help="Path to the aliases CSV file(s).")
     parser.add_argument("--log-file", help="Path to the log file.")
     parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Logging level.")
     parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode (no side effects).")
     
     args = parser.parse_args()
     
-    app = Automator(args.csv_file, log_file=args.log_file, log_level=args.log_level, dry_run=args.dry_run)
+    app = Automator(args.csv_files, log_file=args.log_file, log_level=args.log_level, dry_run=args.dry_run)
     
     if args.aliases:
         app.load_aliases(args.aliases)

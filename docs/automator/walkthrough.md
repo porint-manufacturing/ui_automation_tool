@@ -181,10 +181,26 @@ python automator.py
 python automator.py actions.csv
 ```
 
+**複数ファイルを指定して実行 (New!)**
+
+セットアップ、メイン処理、ティアダウンなどを分割して管理できます。指定した順序で結合されて実行されます。
+
+```bash
+python automator.py setup.csv main.csv teardown.csv
+```
+
 **エイリアスを使用**
 
 ```bash
 python automator.py actions.csv --aliases aliases.csv
+```
+
+**複数のエイリアスファイルを指定 (New!)**
+
+共通エイリアスとプロジェクト固有エイリアスなどをマージできます。後から指定したファイルの定義が優先されます。
+
+```bash
+python automator.py actions.csv --aliases common_aliases.csv project_aliases.csv
 ```
 
 **ログ出力とDry-run**
