@@ -246,7 +246,31 @@ python automator.py actions.csv --aliases common_aliases.csv project_aliases.csv
 python automator.py actions.csv --aliases aliases.csv --log-file execution.log --log-level DEBUG --dry-run
 ```
 
-## 4. エラーハンドリング
+## 4. Chrome / Electron アプリ操作のTips
+
+ChromeやElectron製アプリ（VS Code, Teams, Slackなど）を操作する際の留意事項です。
+
+### 4.1. 起動オプション
+
+安定した操作のために、以下のオプションを付けてアプリを起動することを推奨します。
+
+- `--force-renderer-accessibility`: アクセシビリティツリーを強制的に構築させます。
+
+### 4.2. 要素の特定
+
+- **AutomationId**: HTMLの `id` 属性がそのまま `AutomationId` として認識されることが多いです。
+- **Name**: `aria-label` 属性やボタン内のテキストが `Name` として認識されます。
+- **階層**: Webページは階層が深くなりがちです。InspectorのModernモードを活用し、`AutomationId` で特定することでパスを短縮できます。
+
+### 4.3. 入力操作
+
+- **Input vs SendKeys**: Reactなどのフレームワークでは、`Input` (SetValue) で値を設定しても内部ステートに反映されないことがあります。その場合は、`Click` でフォーカスしてから `SendKeys` で入力する方法を試してください。
+
+### 4.4. キー操作
+
+- ブラウザ独自のショートカットキー（`Ctrl+T` など）と競合しないように注意してください。
+
+## 5. エラーハンドリング
 
 実行中にエラーが発生した場合、`errors/` ディレクトリにスクリーンショットが自動的に保存されます。
 ログファイルを確認することで、詳細なエラー原因を特定できます。
