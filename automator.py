@@ -83,27 +83,226 @@ class Automator:
                 sys.exit(1)
         self.logger.info(f"Loaded {len(self.actions)} actions total.")
 
+    def evaluate_condition(self, condition):
+        """Evaluates a condition string like '{status} == 'OK''."""
+        # Replace variables
+        if '{' in condition and '}' in condition:
+            for var_name, var_val in self.variables.items():
+                condition = condition.replace(f"{{{var_name}}}", str(var_val))
+        
+        # Safety check: only allow simple comparisons
+        # This is a basic implementation. For production, use a safer parser.
+        try:
+            # We use eval() here for flexibility, but it's risky if inputs are untrusted.
+            # Assuming CSVs are trusted.
+            return eval(condition)
+        except Exception as e:
+            self.logger.error(f"Condition evaluation failed: {condition} - {e}")
+            return False
+
+    def find_matching_end(self, start_index, start_type):
+        """Finds the matching EndIf/Else/EndLoop for a given start action."""
+        nesting = 0
+        for i in range(start_index + 1, len(self.actions)):
+            act = self.actions[i].get('Action', '')
+            
+            if start_type == 'If':
+                if act == 'If':
+                    nesting += 1
+                elif act == 'EndIf':
+                    if nesting == 0:
+                        return i
+                    nesting -= 1
+                elif act == 'Else':
+                    if nesting == 0:
+                        return i
+            
+            elif start_type == 'Loop':
+                if act == 'Loop':
+                    nesting += 1
+                elif act == 'EndLoop':
+                    if nesting == 0:
+                        return i
+                    nesting -= 1
+        return -1
+
     def run(self):
-        for i, action in enumerate(self.actions):
+        i = 0
+        loop_stack = [] # Stores (start_index, loop_info)
+        
+        while i < len(self.actions):
+            action = self.actions[i]
             self.logger.info(f"--- Action {i+1} ---")
             target_app = action.get('TargetApp', '')
             key = action.get('Key', '')
             act_type = action.get('Action', '')
             value = action.get('Value', '')
 
-            # 変数置換
-            if '{' in value and '}' in value:
-                for var_name, var_val in self.variables.items():
-                    value = value.replace(f"{{{var_name}}}", str(var_val))
+            # Variable substitution for Value (except for control flow which handles it specifically)
+            if act_type not in ['If', 'Loop', 'SetVariable']:
+                 if '{' in value and '}' in value:
+                    for var_name, var_val in self.variables.items():
+                        value = value.replace(f"{{{var_name}}}", str(var_val))
 
             self.logger.info(f"Target: {target_app}, Action: {act_type}, Value: {value}")
             
+            # --- Control Flow ---
+            if act_type == 'If':
+                condition = value
+                result = self.evaluate_condition(condition)
+                self.logger.info(f"Condition '{condition}' evaluated to: {result}")
+                
+                if result:
+                    # Continue to next action (True block)
+                    i += 1
+                else:
+                    # Jump to Else or EndIf
+                    jump_to = self.find_matching_end(i, 'If')
+                    if jump_to == -1:
+                        self.logger.error("Missing matching EndIf/Else for If")
+                        break
+                    
+                    # If we jumped to Else, we need to execute the Else block next (so i = jump_to + 1)
+                    # But wait, if we jump to Else, the next iteration will process 'Else' action?
+                    # No, 'Else' action itself should just jump to EndIf if encountered naturally.
+                    # If we jump TO Else, we want to enter the block AFTER Else.
+                    
+                    next_act = self.actions[jump_to].get('Action', '')
+                    if next_act == 'Else':
+                        i = jump_to + 1
+                    else: # EndIf
+                        i = jump_to + 1
+                continue
+
+            elif act_type == 'Else':
+                # If we hit Else naturally, it means we executed the True block.
+                # So we must skip to EndIf.
+                # We need to find the EndIf corresponding to the If that started this block.
+                # But we don't have a reference to the start If here easily unless we track stack.
+                # Alternatively, we can just scan forward for EndIf, respecting nesting.
+                # Since we are inside an Else block (conceptually), we search for EndIf.
+                # But wait, 'Else' is at the same nesting level as 'If'.
+                
+                # Scan forward for EndIf
+                jump_to = self.find_matching_end(i, 'If') # Reuse If logic? No, If logic looks for Else/EndIf.
+                # We need a finder that looks for EndIf only.
+                
+                nesting = 0
+                found = -1
+                for j in range(i + 1, len(self.actions)):
+                    act = self.actions[j].get('Action', '')
+                    if act == 'If':
+                        nesting += 1
+                    elif act == 'EndIf':
+                        if nesting == 0:
+                            found = j
+                            break
+                        nesting -= 1
+                
+                if found != -1:
+                    i = found + 1
+                else:
+                    self.logger.error("Missing matching EndIf for Else")
+                    break
+                continue
+
+            elif act_type == 'EndIf':
+                # Just continue
+                i += 1
+                continue
+
+            elif act_type == 'Loop':
+                # Check if this loop is already active
+                active_loop = None
+                if loop_stack and loop_stack[-1][0] == i:
+                    active_loop = loop_stack[-1]
+                
+                if active_loop:
+                    # Re-eval condition
+                    condition = value
+                    # If value is a number, it's a count loop
+                    if value.isdigit():
+                         # Count is handled in state
+                         pass # Logic below
+                    else:
+                         # Condition loop
+                         pass
+                else:
+                    # New loop entry
+                    pass
+
+                # Unified Loop Logic
+                # If value is digit -> Count loop.
+                # Else -> Condition loop.
+                
+                should_loop = False
+                
+                # Expand variables in value for evaluation
+                eval_value = value
+                if '{' in eval_value and '}' in eval_value:
+                    for var_name, var_val in self.variables.items():
+                        eval_value = eval_value.replace(f"{{{var_name}}}", str(var_val))
+
+                if eval_value.isdigit():
+                    max_count = int(eval_value)
+                    # Check stack
+                    if loop_stack and loop_stack[-1][0] == i:
+                        # Increment counter
+                        loop_stack[-1][1]['current'] += 1
+                        if loop_stack[-1][1]['current'] < max_count:
+                            should_loop = True
+                        else:
+                            should_loop = False
+                            loop_stack.pop() # Loop finished
+                    else:
+                        # First entry
+                        if max_count > 0:
+                            should_loop = True
+                            loop_stack.append((i, {'type': 'count', 'current': 0, 'max': max_count}))
+                        else:
+                            should_loop = False
+                else:
+                    # Condition loop
+                    result = self.evaluate_condition(value) # Use original value with vars
+                    if result:
+                        should_loop = True
+                        if not (loop_stack and loop_stack[-1][0] == i):
+                            loop_stack.append((i, {'type': 'condition'}))
+                    else:
+                        should_loop = False
+                        if loop_stack and loop_stack[-1][0] == i:
+                            loop_stack.pop()
+
+                if should_loop:
+                    i += 1
+                else:
+                    # Jump to EndLoop
+                    jump_to = self.find_matching_end(i, 'Loop')
+                    if jump_to == -1:
+                        self.logger.error("Missing matching EndLoop")
+                        break
+                    i = jump_to + 1
+                continue
+
+            elif act_type == 'EndLoop':
+                # Jump back to Loop start
+                if loop_stack:
+                    start_index = loop_stack[-1][0]
+                    i = start_index
+                else:
+                    self.logger.error("EndLoop without active Loop")
+                    i += 1
+                continue
+
+            # --- Normal Action ---
             try:
                 self.execute_action(target_app, key, act_type, value)
             except Exception as e:
                 self.logger.error(f"Action failed: {e}")
                 self.capture_screenshot(f"error_action_{i+1}")
                 # sys.exit(1)
+            
+            i += 1
 
     def capture_screenshot(self, name_prefix):
         """Captures a screenshot of the entire screen."""
@@ -409,6 +608,39 @@ class Automator:
                     auto.SendKeys('{Alt}{F4}')
             except Exception as e:
                 self.logger.error(f"Failed to exit window: {e}")
+
+        elif act_type == "SetVariable":
+            if self.dry_run:
+                self.logger.info(f"[Dry-run] Would set variable based on: {value}")
+                return
+
+            # Parse value: "var_name = expression" or just "var_name" (if getting from somewhere else? No, SetVariable implies setting)
+            # Or "var_name = value"
+            if "=" in value:
+                parts = value.split("=", 1)
+                var_name = parts[0].strip()
+                expr = parts[1].strip()
+                
+                # Evaluate expression if it contains variables or math
+                # Simple substitution first
+                if '{' in expr and '}' in expr:
+                    for v_name, v_val in self.variables.items():
+                        expr = expr.replace(f"{{{v_name}}}", str(v_val))
+                
+                try:
+                    # Try to eval as python expression (for math)
+                    # If it fails (e.g. string), keep as string
+                    # But eval('string') fails if not quoted.
+                    # Let's try to eval, if NameError/SyntaxError, treat as string.
+                    # But "1 + 1" should be 2.
+                    val = eval(expr)
+                except:
+                    val = expr
+                
+                self.variables[var_name] = val
+                self.logger.info(f"Set variable '{var_name}' to '{val}'")
+            else:
+                self.logger.warning(f"Invalid SetVariable format: {value}. Expected 'name = value'")
 
         else:
             self.logger.warning(f"Unknown action: {act_type}")
