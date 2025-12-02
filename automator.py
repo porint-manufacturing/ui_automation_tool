@@ -10,7 +10,10 @@ import datetime
 import uiautomation as auto
 
 # Enable High DPI Awareness to ensure correct coordinates
-auto.SetHighDpiAware()
+try:
+    auto.SetProcessDpiAwareness(2) # Process_PerMonitorDpiAware
+except Exception:
+    pass # Ignore if not supported (e.g. older Windows)
 
 class Automator:
     def __init__(self, action_files, log_file=None, log_level="INFO", dry_run=False):

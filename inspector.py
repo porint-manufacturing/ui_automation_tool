@@ -9,7 +9,10 @@ import io
 import ctypes
 
 # Enable High DPI Awareness to ensure correct coordinates
-auto.SetHighDpiAware()
+try:
+    auto.SetProcessDpiAwareness(2) # Process_PerMonitorDpiAware
+except Exception:
+    pass
 
 class Inspector:
     def __init__(self, mode="modern", output="clipboard"):
