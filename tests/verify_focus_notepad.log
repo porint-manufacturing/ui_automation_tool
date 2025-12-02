@@ -1,0 +1,4 @@
+2025-12-02 12:36:03,972 - DEBUG - Release <POINTER(IUIAutomationElement) ptr=0x2376392b8e0 at 23763b3e5d0>
+2025-12-02 12:36:03,974 - DEBUG - Release <POINTER(IUIAutomationWindowPattern) ptr=0x23763918a80 at 23763b3e550>
+2025-12-02 12:36:03,975 - DEBUG - Calling CoUninitialize()
+2025-12-02 12:36:03,978 - DEBUG - CoUninitialize() done.

@@ -522,6 +522,10 @@ class Automator:
             if self.dry_run:
                 self.logger.info(f"[Dry-run] Would focus element: {element.Name}")
                 return
+            
+            if not element.IsKeyboardFocusable:
+                self.logger.warning(f"Element '{element.Name}' is not keyboard focusable. Focus might not work.")
+                
             self.logger.info(f"Focusing element '{element.Name}'...")
             element.SetFocus()
 
