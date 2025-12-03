@@ -80,6 +80,14 @@ class Automator:
                             self.logger.debug(f"Resolved alias '{key}' -> '{self.aliases[key]}'")
                             row["Key"] = self.aliases[key]
                         
+                        # Normalize action type
+                        act_type = row.get("Action", "")
+                        if act_type.upper() == "IF": row["Action"] = "If"
+                        elif act_type.upper() == "ELSE": row["Action"] = "Else"
+                        elif act_type.upper() == "ENDIF": row["Action"] = "EndIf"
+                        elif act_type.upper() == "LOOP": row["Action"] = "Loop"
+                        elif act_type.upper() == "ENDLOOP": row["Action"] = "EndLoop"
+                        
                         self.actions.append(row)
             except FileNotFoundError:
                 self.logger.error(f"File not found: {csv_file}")
@@ -732,6 +740,16 @@ class Automator:
             )
             
             if not target.Exists(maxSearchSeconds=2):
+                # Fallback: Try increasing search depth by 1
+                current_depth = search_params.get("searchDepth", 1)
+                self.logger.warning(f"Element not found at depth {current_depth}. Trying depth {current_depth + 1}...")
+                search_params["searchDepth"] = current_depth + 1
+                target = current.Control(
+                    foundIndex=found_index,
+                    **search_params
+                )
+
+            if not target.Exists(maxSearchSeconds=1):
                 self.logger.warning(f"Not found: {part}")
                 return None
             
