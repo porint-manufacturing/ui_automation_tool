@@ -16,11 +16,12 @@ except Exception:
     pass # Ignore if not supported (e.g. older Windows)
 
 class Automator:
-    def __init__(self, action_files, log_file=None, log_level="INFO", dry_run=False):
+    def __init__(self, action_files, log_file=None, log_level="INFO", dry_run=False, force_run=False):
         self.actions = []
         self.variables = {}
         self.aliases = {}
         self.dry_run = dry_run
+        self.force_run = force_run
         
         # Configure logging
         level = getattr(logging, log_level.upper(), logging.INFO)
@@ -316,7 +317,9 @@ class Automator:
             except Exception as e:
                 self.logger.error(f"Action failed: {e}")
                 self.capture_screenshot(f"error_action_{i+1}")
-                # sys.exit(1)
+                if not self.force_run:
+                    self.logger.error("Stopping execution due to error. Use --force-run to continue on errors.")
+                    sys.exit(1)
             
             i += 1
 
@@ -849,10 +852,11 @@ if __name__ == "__main__":
     parser.add_argument("--log-file", help="Path to the log file.")
     parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Logging level.")
     parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode (no side effects).")
+    parser.add_argument("--force-run", action="store_true", help="Continue execution even if errors occur.")
     
     args = parser.parse_args()
     
-    app = Automator(args.csv_files, log_file=args.log_file, log_level=args.log_level, dry_run=args.dry_run)
+    app = Automator(args.csv_files, log_file=args.log_file, log_level=args.log_level, dry_run=args.dry_run, force_run=args.force_run)
     
     if args.aliases:
         app.load_aliases(args.aliases)
