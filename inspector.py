@@ -166,6 +166,7 @@ class Inspector:
     def run_interactive(self):
         print("Interactive Alias Mode")
         print("Type the alias name and press Enter, then click the target element.")
+        print("You can use Left Click or Right Click (Right Click won't trigger the element).")
         print("Type 'q' or 'exit' to finish.")
         print("-" * 50)
 
@@ -199,7 +200,7 @@ class Inspector:
             })
 
     def run_normal(self):
-        print("Hover over an element and CLICK (Left Click) to inspect/record.")
+        print("Hover over an element and CLICK (Left or Right Click) to inspect/record.")
         print("Press 'ESC' to finish and output.")
         print("-" * 50)
 
@@ -210,8 +211,9 @@ class Inspector:
                 print("\nFinishing...")
                 break
                 
-            # Check for click (Left Button) using ctypes
-            if ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000:
+            # Check for left click (0x01) or right click (0x02)
+            if (ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000) or \
+               (ctypes.windll.user32.GetAsyncKeyState(0x02) & 0x8000):
                 x, y = auto.GetCursorPos()
                 control = auto.ControlFromPoint(x, y)
                 
@@ -220,7 +222,8 @@ class Inspector:
                     if not last_element or not auto.ControlsAreSame(control, last_element):
                         self.inspect_element(control, x, y)
                         last_element = control
-                        while ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000:
+                        while (ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000) or \
+                              (ctypes.windll.user32.GetAsyncKeyState(0x02) & 0x8000):
                             time.sleep(0.05)
                 else:
                     time.sleep(0.1)
@@ -229,16 +232,19 @@ class Inspector:
                 time.sleep(0.05)
 
     def wait_for_click(self):
-        """Waits for a left click and returns (control, x, y). Returns None if ESC is pressed."""
+        """Waits for a left or right click and returns (control, x, y). Returns None if ESC is pressed."""
         while True:
             if keyboard.is_pressed('esc'):
                 return None
             
-            if ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000:
+            # Check for left click (0x01) or right click (0x02)
+            if (ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000) or \
+               (ctypes.windll.user32.GetAsyncKeyState(0x02) & 0x8000):
                 x, y = auto.GetCursorPos()
                 control = auto.ControlFromPoint(x, y)
                 # Wait for release to avoid multiple registrations
-                while ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000:
+                while (ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000) or \
+                      (ctypes.windll.user32.GetAsyncKeyState(0x02) & 0x8000):
                     time.sleep(0.05)
                 return control, x, y
             
