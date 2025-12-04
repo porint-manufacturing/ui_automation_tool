@@ -441,17 +441,36 @@ class Automator:
 
             self.logger.info(f"Inputting text: {value}")
             success = False
-            if isinstance(element, (auto.EditControl, auto.DocumentControl)):
-                try:
-                    if element.GetPattern(auto.PatternId.ValuePattern):
-                        element.SetValue(value)
-                        success = True
-                except Exception as e:
-                    self.logger.warning(f"SetValue failed: {e}")
+            
+            # Try ValuePattern first (don't restrict by type)
+            try:
+                pattern = element.GetPattern(auto.PatternId.ValuePattern)
+                if pattern:
+                    self.logger.debug("Using ValuePattern.SetValue()...")
+                    element.SetValue(value)
+                    success = True
+            except Exception as e:
+                self.logger.debug(f"SetValue failed: {e}")
             
             if not success:
                 self.logger.debug("Fallback to SendKeys...")
+                # Set focus and wait for it to be established
                 element.SetFocus()
+                
+                # Wait longer for legacy apps (up to 1 second)
+                max_wait = 1.0
+                wait_interval = 0.1
+                elapsed = 0
+                while elapsed < max_wait:
+                    time.sleep(wait_interval)
+                    elapsed += wait_interval
+                    if element.HasKeyboardFocus:
+                        self.logger.debug(f"Focus confirmed after {elapsed:.1f}s")
+                        break
+                else:
+                    # Focus not confirmed, but proceed anyway with a warning
+                    self.logger.warning(f"Focus not confirmed after {max_wait}s, proceeding with SendKeys anyway")
+                
                 auto.SendKeys(value)
 
         elif act_type == "SendKeys":
@@ -461,6 +480,20 @@ class Automator:
 
             self.logger.info(f"Sending keys: {value}")
             element.SetFocus()
+            
+            # Wait for focus to be established (legacy app support)
+            max_wait = 1.0
+            wait_interval = 0.1
+            elapsed = 0
+            while elapsed < max_wait:
+                time.sleep(wait_interval)
+                elapsed += wait_interval
+                if element.HasKeyboardFocus:
+                    self.logger.debug(f"Focus confirmed after {elapsed:.1f}s")
+                    break
+            else:
+                self.logger.warning(f"Focus not confirmed after {max_wait}s, proceeding with SendKeys anyway")
+            
             auto.SendKeys(value)
 
         elif act_type == "Invoke":
@@ -693,20 +726,30 @@ class Automator:
             had_focus_before = element.HasKeyboardFocus
             self.logger.debug(f"Before SetFocus: HasKeyboardFocus={had_focus_before}, IsKeyboardFocusable={element.IsKeyboardFocusable}")
             
-            # フォーカスを設定
+            # フォーカスを設定（レガシーアプリ対応：リトライあり）
             try:
                 element.SetFocus()
                 
-                # フォーカス設定後の確認（少し待機）
-                time.sleep(0.1)
-                has_focus_after = element.HasKeyboardFocus
+                # フォーカス設定後の確認（レガシーアプリのため長めに待機）
+                max_wait = 1.0
+                wait_interval = 0.1
+                elapsed = 0
+                has_focus_after = False
+                
+                while elapsed < max_wait:
+                    time.sleep(wait_interval)
+                    elapsed += wait_interval
+                    has_focus_after = element.HasKeyboardFocus
+                    if has_focus_after:
+                        self.logger.debug(f"Focus confirmed after {elapsed:.1f}s")
+                        break
                 
                 self.logger.debug(f"After SetFocus: HasKeyboardFocus={has_focus_after}")
                 
                 if has_focus_after:
                     self.logger.info(f"✓ Focus successfully set on '{element_desc}'")
                 else:
-                    self.logger.warning(f"⚠ SetFocus() was called, but element does not have keyboard focus. Visual focus indicator may not appear.")
+                    self.logger.warning(f"⚠ SetFocus() was called, but element does not have keyboard focus after {max_wait}s. This may be normal for some legacy controls.")
                     
             except Exception as e:
                 self.logger.error(f"Failed to set focus on '{element_desc}': {e}")
