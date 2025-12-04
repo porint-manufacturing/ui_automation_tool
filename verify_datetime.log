@@ -1,0 +1,14 @@
+2025-12-04 12:23:29,789 - INFO - Loading actions from test_datetime.txt...
+2025-12-04 12:23:29,791 - INFO - Loaded 4 actions total.
+2025-12-04 12:23:29,792 - INFO - --- Action 1 ---
+2025-12-04 12:23:29,792 - INFO - Target: , Action: GetDateTime, Value: yyyy/MM/dd HH:mm:ss
+2025-12-04 12:23:31,333 - INFO - Got date/time: '2025/12/04 12:23:31'. Storing in variable 'current_time'
+2025-12-04 12:23:31,333 - INFO - --- Action 2 ---
+2025-12-04 12:23:31,333 - INFO - Target: , Action: GetDateTime, Value: yyyy
+2025-12-04 12:23:32,736 - INFO - Got date/time: '2025'. Storing in variable 'current_year'
+2025-12-04 12:23:32,736 - INFO - --- Action 3 ---
+2025-12-04 12:23:32,736 - INFO - Target: , Action: GetDateTime, Value: MM
+2025-12-04 12:23:34,063 - INFO - Got date/time: '12'. Storing in variable 'current_month'
+2025-12-04 12:23:34,063 - INFO - --- Action 4 ---
+2025-12-04 12:23:34,064 - INFO - Target: , Action: GetDateTime, Value: dd
+2025-12-04 12:23:35,372 - INFO - Got date/time: '04'. Storing in variable 'current_day'

@@ -564,6 +564,28 @@ class Automator:
             self.logger.info(f"Got clipboard text: '{val}'. Storing in variable '{value}'")
             self.variables[value] = val
 
+        elif act_type == "GetDateTime":
+            if self.dry_run:
+                self.logger.info(f"[Dry-run] Would get current date/time with format '{value}' and store in '{key}'")
+                self.variables[key] = "[DryRunDateTime]"
+                return
+
+            # Convert C# style format to Python strftime format
+            # yyyy -> %Y, MM -> %m, dd -> %d, HH -> %H, mm -> %M, ss -> %S
+            fmt = value
+            fmt = fmt.replace("yyyy", "%Y")
+            fmt = fmt.replace("MM", "%m")
+            fmt = fmt.replace("dd", "%d")
+            fmt = fmt.replace("HH", "%H")
+            fmt = fmt.replace("mm", "%M")
+            fmt = fmt.replace("ss", "%S")
+            
+            now = datetime.datetime.now()
+            formatted_date = now.strftime(fmt)
+            
+            self.logger.info(f"Got date/time: '{formatted_date}'. Storing in variable '{key}'")
+            self.variables[key] = formatted_date
+
         elif act_type == "VerifyValue":
             if self.dry_run:
                 self.logger.info(f"[Dry-run] Would verify value of element: {element.Name} against '{value}'")
