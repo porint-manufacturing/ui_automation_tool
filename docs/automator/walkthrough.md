@@ -44,6 +44,10 @@ CSV ファイルに記述された手順に従って操作を実行します。
     - フォーマット例: `current_time = yyyy/MM/dd HH:mm:ss`
     - オフセット指定可能: `tomorrow = yyyy/MM/dd + 1` (翌日), `yesterday = yyyy/MM/dd - 1` (前日)
     - 対応フォーマット: `yyyy` (年), `MM` (月), `dd` (日), `HH` (時), `mm` (分), `ss` (秒)
+  - `GetProperty`: 相対要素のプロパティを取得して変数に保存 (`Value`に `変数名 = 方向.プロパティ名`)。
+    - 方向: `self` (自分), `parent` (親), `left` (左), `right` (右), `up` (上), `down` (下), `next` (次の兄弟), `prev` (前の兄弟)
+    - プロパティ: `Name`, `AutomationId`, `ControlType`, `ClassName`, `Value`, `Text`, `IsEnabled`, `IsVisible`, `IsChecked`, `IsSelected`
+    - 例: `label = right.Name` (右側の要素の名前を取得), `parent_id = parent.AutomationId` (親要素のIDを取得)
   - `If`: 条件分岐開始 (`Value`に条件式)。例: `{status} == 'OK'`
   - `Else`: `If` の偽ブロック開始。
   - `EndIf`: `If` ブロック終了。

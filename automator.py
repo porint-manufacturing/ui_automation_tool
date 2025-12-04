@@ -326,12 +326,152 @@ class Automator:
             
             i += 1
 
+
     def format_path_with_alias(self, rpa_path):
         """Format RPA_PATH with alias name if available for error messages."""
         if rpa_path in self.reverse_aliases:
             alias = self.reverse_aliases[rpa_path]
             return f"'{alias}' ({rpa_path})"
         return rpa_path
+
+    def get_element_property(self, element, prop_name):
+        """Get a property value from an element."""
+        try:
+            # Basic properties
+            if prop_name == 'Name':
+                return element.Name or ''
+            elif prop_name == 'AutomationId':
+                return element.AutomationId or ''
+            elif prop_name == 'ControlType':
+                return element.ControlTypeName or ''
+            elif prop_name == 'ClassName':
+                return element.ClassName or ''
+            elif prop_name == 'IsEnabled':
+                return str(element.IsEnabled)
+            elif prop_name == 'IsVisible':
+                return str(not element.IsOffscreen)
+            elif prop_name == 'IsKeyboardFocusable':
+                return str(element.IsKeyboardFocusable)
+            elif prop_name == 'HasKeyboardFocus':
+                return str(element.HasKeyboardFocus)
+            
+            # Pattern-based properties
+            elif prop_name == 'Value':
+                try:
+                    pattern = element.GetPattern(auto.PatternId.ValuePattern)
+                    return pattern.Value if pattern else ''
+                except Exception:
+                    return ''
+            elif prop_name == 'Text':
+                try:
+                    pattern = element.GetPattern(auto.PatternId.TextPattern)
+                    if pattern:
+                        return pattern.DocumentRange.GetText(-1)
+                except Exception:
+                    pass
+                return element.Name or ''
+            elif prop_name == 'IsChecked':
+                try:
+                    pattern = element.GetPattern(auto.PatternId.TogglePattern)
+                    if pattern:
+                        state = pattern.ToggleState
+                        return 'True' if state == 1 else 'False'  # 1 = On, 0 = Off
+                except Exception:
+                    return ''
+            elif prop_name == 'IsSelected':
+                try:
+                    pattern = element.GetPattern(auto.PatternId.SelectionItemPattern)
+                    return str(pattern.IsSelected) if pattern else ''
+                except Exception:
+                    return ''
+            else:
+                self.logger.warning(f"Unknown property: {prop_name}")
+                return ''
+        except Exception as e:
+            self.logger.warning(f"Failed to get property '{prop_name}': {e}")
+            return ''
+
+    def get_relative_element(self, element, window, direction):
+        """Get a relative element based on direction."""
+        try:
+            if direction == 'self':
+                return element
+            elif direction == 'parent':
+                parent = element.GetParentControl()
+                return parent if parent else None
+            elif direction == 'next':
+                sibling = element.GetNextSiblingControl()
+                return sibling if sibling else None
+            elif direction in ['prev', 'previous']:
+                sibling = element.GetPreviousSiblingControl()
+                return sibling if sibling else None
+            elif direction in ['left', 'right', 'up', 'down', 'above', 'below']:
+                # Coordinate-based search
+                return self._find_element_by_position(element, window, direction)
+            else:
+                self.logger.warning(f"Unknown direction: {direction}")
+                return None
+        except Exception as e:
+            self.logger.warning(f"Failed to get {direction} element: {e}")
+            return None
+
+    def _find_element_by_position(self, element, window, direction):
+        """Find element by relative position (left, right, up, down)."""
+        rect = element.BoundingRectangle
+        center_x = rect.left + rect.width() // 2
+        center_y = rect.top + rect.height() // 2
+        
+        # Get all controls in the window
+        all_controls = []
+        def collect_controls(ctrl):
+            all_controls.append(ctrl)
+            for child in ctrl.GetChildren():
+                collect_controls(child)
+        
+        try:
+            collect_controls(window)
+        except Exception as e:
+            self.logger.debug(f"Error collecting controls: {e}")
+            return None
+        
+        # Filter and find nearest element
+        candidates = []
+        for ctrl in all_controls:
+            if ctrl == element:
+                continue
+            try:
+                ctrl_rect = ctrl.BoundingRectangle
+                ctrl_center_x = ctrl_rect.left + ctrl_rect.width() // 2
+                ctrl_center_y = ctrl_rect.top + ctrl_rect.height() // 2
+                
+                if direction == 'left':
+                    # Left: X is less, Y overlaps
+                    if ctrl_center_x < center_x and abs(ctrl_center_y - center_y) < rect.height():
+                        distance = center_x - ctrl_center_x
+                        candidates.append((distance, ctrl))
+                elif direction == 'right':
+                    # Right: X is greater, Y overlaps
+                    if ctrl_center_x > center_x and abs(ctrl_center_y - center_y) < rect.height():
+                        distance = ctrl_center_x - center_x
+                        candidates.append((distance, ctrl))
+                elif direction in ['up', 'above']:
+                    # Up: Y is less, X overlaps
+                    if ctrl_center_y < center_y and abs(ctrl_center_x - center_x) < rect.width():
+                        distance = center_y - ctrl_center_y
+                        candidates.append((distance, ctrl))
+                elif direction in ['down', 'below']:
+                    # Down: Y is greater, X overlaps
+                    if ctrl_center_y > center_y and abs(ctrl_center_x - center_x) < rect.width():
+                        distance = ctrl_center_y - center_y
+                        candidates.append((distance, ctrl))
+            except Exception:
+                continue
+        
+        # Return nearest element
+        if candidates:
+            candidates.sort(key=lambda x: x[0])
+            return candidates[0][1]
+        return None
 
     def capture_screenshot(self, name_prefix):
         """Captures a screenshot of the entire screen."""
@@ -655,6 +795,45 @@ class Automator:
             val = auto.GetClipboardText()
             self.logger.info(f"Got clipboard text: '{val}'. Storing in variable '{value}'")
             self.variables[value] = val
+
+        elif act_type == "GetProperty":
+            if self.dry_run:
+                self.logger.info(f"[Dry-run] Would get property: {value}")
+                return
+
+            # Parse: var_name = direction.property
+            if "=" not in value:
+                self.logger.error(f"GetProperty requires format: var = direction.property (got: {value})")
+                return
+            
+            var_name, spec = value.split("=", 1)
+            var_name = var_name.strip()
+            spec = spec.strip()
+            
+            # Parse direction.property
+            if "." not in spec:
+                self.logger.error(f"GetProperty requires format: direction.property (got: {spec})")
+                return
+            
+            direction, prop_name = spec.split(".", 1)
+            direction = direction.strip()
+            prop_name = prop_name.strip()
+            
+            # Get relative element
+            target_elem = self.get_relative_element(element, window, direction)
+            if not target_elem:
+                key_display = self.format_path_with_alias(key) if key else "window"
+                self.logger.warning(f"No {direction} element found for {key_display}")
+                self.variables[var_name] = ""
+                return
+            
+            # Get property value
+            prop_value = self.get_element_property(target_elem, prop_name)
+            self.variables[var_name] = prop_value
+            
+            # Log with element info
+            elem_desc = target_elem.Name or target_elem.ControlTypeName or "element"
+            self.logger.info(f"Got {direction}.{prop_name} = '{prop_value}' from '{elem_desc}', stored in '{var_name}'")
 
         elif act_type == "GetDateTime":
             if self.dry_run:
