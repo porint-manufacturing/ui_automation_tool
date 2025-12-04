@@ -1,5 +1,0 @@
-TargetApp,Key,Action,Value
-,current_time,GetDateTime,yyyy/MM/dd HH:mm:ss
-,current_year,GetDateTime,yyyy
-,current_month,GetDateTime,MM
-,current_day,GetDateTime,dd
