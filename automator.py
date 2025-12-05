@@ -7,6 +7,7 @@ import argparse
 import logging
 import os
 import datetime
+import ctypes
 import uiautomation as auto
 
 # Enable High DPI Awareness to ensure correct coordinates
@@ -492,6 +493,78 @@ class Automator:
         except Exception as e:
             self.logger.error(f"Failed to capture screenshot: {e}")
 
+    def _set_focus_win32(self, element):
+        """Set focus using Win32 API for legacy controls.
+        
+        Args:
+            element: UI Automation element
+            
+        Returns:
+            bool: True if Win32 SetFocus was called successfully, False otherwise
+        """
+        try:
+            # Get NativeWindowHandle
+            hwnd = element.NativeWindowHandle
+            if hwnd:
+                # Call Win32 SetFocus
+                result = ctypes.windll.user32.SetFocus(hwnd)
+                if result:
+                    self.logger.debug(f"Win32 SetFocus called (hwnd={hwnd})")
+                    return True
+                else:
+                    self.logger.debug(f"Win32 SetFocus failed (hwnd={hwnd})")
+                    return False
+            else:
+                self.logger.debug("No NativeWindowHandle available for Win32 SetFocus")
+                return False
+        except Exception as e:
+            self.logger.debug(f"Win32 SetFocus exception: {e}")
+            return False
+
+    def _set_focus_with_fallback(self, element, element_desc=None):
+        """Set focus with fallback to Win32 API for legacy controls.
+        
+        Tries UI Automation SetFocus first, then falls back to Win32 API if that fails.
+        
+        Args:
+            element: UI Automation element
+            element_desc: Optional description for error messages
+            
+        Returns:
+            bool: True if focus was set successfully, False otherwise
+            
+        Raises:
+            Exception: If focus setting fails and --force-run is not enabled
+        """
+        # 1. Try UI Automation SetFocus
+        element.SetFocus()
+        time.sleep(0.1)
+        
+        if element.HasKeyboardFocus:
+            self.logger.debug("Focus set via UI Automation")
+            return True
+        
+        # 2. Try Win32 API SetFocus
+        self.logger.debug("UI Automation SetFocus failed, trying Win32 API...")
+        if self._set_focus_win32(element):
+            time.sleep(0.1)
+            if element.HasKeyboardFocus:
+                self.logger.debug("Focus confirmed after Win32 SetFocus")
+                return True
+        
+        # 3. Both methods failed
+        desc = element_desc or element.Name or "element"
+        
+        # Handle failure based on force-run flag
+        if self.force_run:
+            # force-run: warn and continue
+            self.logger.warning(f"Could not set focus on '{desc}' with any method, proceeding anyway (--force-run)")
+            return False
+        else:
+            # normal: raise exception and stop
+            raise Exception(f"Could not set focus on '{desc}' with any method (UI Automation and Win32 API both failed)")
+
+
     def execute_action(self, target_app, key, act_type, value):
         if act_type == "Launch":
             if self.dry_run:
@@ -634,22 +707,9 @@ class Automator:
             
             if not success:
                 self.logger.debug("Fallback to SendKeys...")
-                # Set focus and wait for it to be established
-                element.SetFocus()
-                
-                # Wait longer for legacy apps (up to 1 second)
-                max_wait = 1.0
-                wait_interval = 0.1
-                elapsed = 0
-                while elapsed < max_wait:
-                    time.sleep(wait_interval)
-                    elapsed += wait_interval
-                    if element.HasKeyboardFocus:
-                        self.logger.debug(f"Focus confirmed after {elapsed:.1f}s")
-                        break
-                else:
-                    # Focus not confirmed, but proceed anyway with a warning
-                    self.logger.warning(f"Focus not confirmed after {max_wait}s, proceeding with SendKeys anyway")
+                # Set focus with Win32 API fallback
+                key_display = self.format_path_with_alias(key) if key else element.Name
+                self._set_focus_with_fallback(element, key_display)
                 
                 auto.SendKeys(value)
 
@@ -659,21 +719,6 @@ class Automator:
                 return
 
             self.logger.info(f"Sending keys: {value}")
-            element.SetFocus()
-            
-            # Wait for focus to be established (legacy app support)
-            max_wait = 1.0
-            wait_interval = 0.1
-            elapsed = 0
-            while elapsed < max_wait:
-                time.sleep(wait_interval)
-                elapsed += wait_interval
-                if element.HasKeyboardFocus:
-                    self.logger.debug(f"Focus confirmed after {elapsed:.1f}s")
-                    break
-            else:
-                self.logger.warning(f"Focus not confirmed after {max_wait}s, proceeding with SendKeys anyway")
-            
             auto.SendKeys(value)
 
         elif act_type == "Invoke":
@@ -683,21 +728,9 @@ class Automator:
             
             self.logger.info(f"Invoking element '{element.Name}'...")
             
-            # Set focus first for legacy app support
-            element.SetFocus()
-            
-            # Wait for focus to be established (legacy app support)
-            max_wait = 1.0
-            wait_interval = 0.1
-            elapsed = 0
-            while elapsed < max_wait:
-                time.sleep(wait_interval)
-                elapsed += wait_interval
-                if element.HasKeyboardFocus:
-                    self.logger.debug(f"Focus confirmed after {elapsed:.1f}s")
-                    break
-            else:
-                self.logger.warning(f"Focus not confirmed after {max_wait}s, proceeding with Invoke anyway")
+            # Set focus with Win32 API fallback (legacy app support)
+            key_display = self.format_path_with_alias(key) if key else element.Name
+            self._set_focus_with_fallback(element, key_display)
             
             # Proceed with invoke
             pattern = element.GetPattern(auto.PatternId.InvokePattern)
@@ -964,34 +997,11 @@ class Automator:
             had_focus_before = element.HasKeyboardFocus
             self.logger.debug(f"Before SetFocus: HasKeyboardFocus={had_focus_before}, IsKeyboardFocusable={element.IsKeyboardFocusable}")
             
-            # フォーカスを設定（レガシーアプリ対応：リトライあり）
-            try:
-                element.SetFocus()
-                
-                # フォーカス設定後の確認（レガシーアプリのため長めに待機）
-                max_wait = 1.0
-                wait_interval = 0.1
-                elapsed = 0
-                has_focus_after = False
-                
-                while elapsed < max_wait:
-                    time.sleep(wait_interval)
-                    elapsed += wait_interval
-                    has_focus_after = element.HasKeyboardFocus
-                    if has_focus_after:
-                        self.logger.debug(f"Focus confirmed after {elapsed:.1f}s")
-                        break
-                
-                self.logger.debug(f"After SetFocus: HasKeyboardFocus={has_focus_after}")
-                
-                if has_focus_after:
-                    self.logger.info(f"✓ Focus successfully set on '{element_desc}'")
-                else:
-                    self.logger.warning(f"⚠ SetFocus() was called, but element does not have keyboard focus after {max_wait}s. This may be normal for some legacy controls.")
-                    
-            except Exception as e:
-                self.logger.error(f"Failed to set focus on '{element_desc}': {e}")
-                raise
+            # Set focus with Win32 API fallback
+            success = self._set_focus_with_fallback(element, element_desc)
+            
+            if success:
+                self.logger.info(f"✓ Focus successfully set on '{element_desc}'")
 
         elif act_type == "WaitUntilEnabled":
             timeout = float(value) if value else 10.0
