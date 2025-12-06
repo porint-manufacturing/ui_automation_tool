@@ -603,11 +603,18 @@ class ActionExecutor:
 
         self.logger.info(f"Exiting {target_app}...")
         try:
+            # Try WindowPattern.Close() first (cleanest method)
             pattern = window.GetPattern(auto.PatternId.WindowPattern)
             if pattern:
                 pattern.Close()
+                self.logger.info(f"Closed {target_app} using WindowPattern.Close()")
             else:
+                # Fallback: Set focus and send Alt+F4 to the specific window
+                self.logger.info(f"WindowPattern not available, using SendKeys method")
                 window.SetFocus()
-                auto.SendKeys('{Alt}{F4}')
+                time.sleep(0.1)  # Brief wait to ensure focus is set
+                # Use window.SendKeys() instead of auto.SendKeys() to send to specific window
+                window.SendKeys('{Alt}{F4}')
+                self.logger.info(f"Sent Alt+F4 to {target_app}")
         except Exception as e:
             self.logger.error(f"Failed to exit window: {e}")

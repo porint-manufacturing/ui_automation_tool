@@ -18,10 +18,9 @@ def verify_output():
     files = [f for f in os.listdir(".") if f.startswith("inspector_") and f.endswith(".csv")]
     if files:
         print(f"CSV File Created: {files[-1]}")
-        # Clean up
-        # os.remove(files[-1])
     else:
         print("CSV File NOT Created")
+        return False
 
     print("\n--- Testing Clipboard Output ---")
     inspector_clip = Inspector(output="clipboard")
@@ -35,8 +34,11 @@ def verify_output():
     
     if "ClipKey" in clip_text:
         print("Clipboard Verification: PASS")
+        return True
     else:
         print("Clipboard Verification: FAIL")
+        return False
 
 if __name__ == "__main__":
-    verify_output()
+    success = verify_output()
+    sys.exit(0 if success else 1)
