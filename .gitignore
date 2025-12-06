@@ -32,3 +32,6 @@ tests/output*.txt
 
 # Errors
 errors/
+
+# Reports
+reports/
