@@ -1,14 +1,20 @@
 import sys
+import os
+
+# Add current directory to Python path for module imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import csv
 import time
 import subprocess
 import re
 import argparse
 import logging
-import os
 import datetime
 import ctypes
 import uiautomation as auto
+from src.automator.utils.focus import FocusManager
+from src.automator.utils.screenshot import capture_screenshot
 
 # Enable High DPI Awareness to ensure correct coordinates
 try:
@@ -39,6 +45,9 @@ class Automator:
             force=True # Reconfigure if already configured
         )
         self.logger = logging.getLogger(__name__)
+        
+        # Initialize FocusManager
+        self.focus_manager = FocusManager(force_run=force_run)
         
         # Ensure action_files is a list
         if isinstance(action_files, str):
@@ -320,7 +329,7 @@ class Automator:
                 self.execute_action(target_app, key, act_type, value)
             except Exception as e:
                 self.logger.error(f"Action failed: {e}")
-                self.capture_screenshot(f"error_action_{i+1}")
+                capture_screenshot(f"error_action_{i+1}", dry_run=self.dry_run)
                 if not self.force_run:
                     self.logger.error("Stopping execution due to error. Use --force-run to continue on errors.")
                     sys.exit(1)
@@ -473,96 +482,6 @@ class Automator:
             candidates.sort(key=lambda x: x[0])
             return candidates[0][1]
         return None
-
-    def capture_screenshot(self, name_prefix):
-        """Captures a screenshot of the entire screen."""
-        if self.dry_run:
-            self.logger.info(f"[Dry-run] Would capture screenshot: {name_prefix}")
-            return
-
-        try:
-            if not os.path.exists("errors"):
-                os.makedirs("errors")
-            
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"errors/{name_prefix}_{timestamp}.png"
-            
-            # Capture full screen
-            auto.GetRootControl().CaptureToImage(filename)
-            self.logger.info(f"Screenshot saved to: {filename}")
-        except Exception as e:
-            self.logger.error(f"Failed to capture screenshot: {e}")
-
-    def _set_focus_win32(self, element):
-        """Set focus using Win32 API for legacy controls.
-        
-        Args:
-            element: UI Automation element
-            
-        Returns:
-            bool: True if Win32 SetFocus was called successfully, False otherwise
-        """
-        try:
-            # Get NativeWindowHandle
-            hwnd = element.NativeWindowHandle
-            if hwnd:
-                # Call Win32 SetFocus
-                result = ctypes.windll.user32.SetFocus(hwnd)
-                if result:
-                    self.logger.debug(f"Win32 SetFocus called (hwnd={hwnd})")
-                    return True
-                else:
-                    self.logger.debug(f"Win32 SetFocus failed (hwnd={hwnd})")
-                    return False
-            else:
-                self.logger.debug("No NativeWindowHandle available for Win32 SetFocus")
-                return False
-        except Exception as e:
-            self.logger.debug(f"Win32 SetFocus exception: {e}")
-            return False
-
-    def _set_focus_with_fallback(self, element, element_desc=None):
-        """Set focus with fallback to Win32 API for legacy controls.
-        
-        Tries UI Automation SetFocus first, then falls back to Win32 API if that fails.
-        
-        Args:
-            element: UI Automation element
-            element_desc: Optional description for error messages
-            
-        Returns:
-            bool: True if focus was set successfully, False otherwise
-            
-        Raises:
-            Exception: If focus setting fails and --force-run is not enabled
-        """
-        # 1. Try UI Automation SetFocus
-        element.SetFocus()
-        time.sleep(0.1)
-        
-        if element.HasKeyboardFocus:
-            self.logger.debug("Focus set via UI Automation")
-            return True
-        
-        # 2. Try Win32 API SetFocus
-        self.logger.debug("UI Automation SetFocus failed, trying Win32 API...")
-        if self._set_focus_win32(element):
-            time.sleep(0.1)
-            if element.HasKeyboardFocus:
-                self.logger.debug("Focus confirmed after Win32 SetFocus")
-                return True
-        
-        # 3. Both methods failed
-        desc = element_desc or element.Name or "element"
-        
-        # Handle failure based on force-run flag
-        if self.force_run:
-            # force-run: warn and continue
-            self.logger.warning(f"Could not set focus on '{desc}' with any method, proceeding anyway (--force-run)")
-            return False
-        else:
-            # normal: raise exception and stop
-            raise Exception(f"Could not set focus on '{desc}' with any method (UI Automation and Win32 API both failed)")
 
 
     def execute_action(self, target_app, key, act_type, value):
