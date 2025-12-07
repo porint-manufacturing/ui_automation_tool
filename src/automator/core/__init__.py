@@ -1,1 +1,1 @@
-# Automator Core Components
+# Automatorコアコンポーネント

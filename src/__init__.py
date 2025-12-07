@@ -1,1 +1,1 @@
-# Automation Tool - Modular Source Code
+# 自動化ツール - モジュール化されたソースコード
