@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src'
 
 from automator.inspector.path_generator import PathGenerator
 from automator.inspector.click_handler import ClickHandler
+from automator.inspector.output_handler import OutputHandler
 
 
 class Inspector:
@@ -29,6 +30,7 @@ class Inspector:
         self.recorded_items = []
         self.path_generator = PathGenerator(mode=mode)
         self.click_handler = ClickHandler()
+        self.output_handler = OutputHandler(output_mode=output)
         print(f"UI Inspector initialized (Mode: {mode}, Output: {output})")
 
 
@@ -153,48 +155,8 @@ class Inspector:
             print(f"  -> Recorded ({len(self.recorded_items)} items)")
 
     def finalize(self):
-        if not self.recorded_items:
-            print("No items recorded.")
-            return
-
-        if self.output == "csv":
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"inspector_{timestamp}.csv"
-            with open(filename, "w", newline="", encoding="utf-8-sig") as f:
-                writer = csv.DictWriter(f, fieldnames=["TargetApp", "Key", "Action", "Value"])
-                writer.writeheader()
-                writer.writerows(self.recorded_items)
-            print(f"Saved to {filename}")
-            
-        elif self.output == "clipboard":
-            # Generate CSV string
-            output = io.StringIO()
-            writer = csv.DictWriter(output, fieldnames=["TargetApp", "Key", "Action", "Value"])
-            writer.writeheader()
-            writer.writerows(self.recorded_items)
-            csv_content = output.getvalue()
-            
-            auto.SetClipboardText(csv_content)
-            print("Copied CSV content to clipboard.")
-
-        elif self.output in ["alias", "interactive_alias"]:
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"inspector_{timestamp}_alias.csv"
-            with open(filename, "w", newline="", encoding="utf-8-sig") as f:
-                writer = csv.DictWriter(f, fieldnames=["AliasName", "RPA_Path"])
-                writer.writeheader()
-                
-                alias_items = []
-                for item in self.recorded_items:
-                    if "AliasName" in item:
-                        # Interactive mode item
-                        alias_items.append(item)
-                    else:
-                        # Normal mode item (convert Key to RPA_Path)
-                        alias_items.append({"AliasName": "", "RPA_Path": item["Key"]})
-                
-                writer.writerows(alias_items)
-            print(f"Saved alias definition to {filename}")
+        """Output recorded items. Delegates to OutputHandler."""
+        self.output_handler.finalize(self.recorded_items)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="UI Inspector for Automator")
