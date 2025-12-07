@@ -248,22 +248,22 @@ class ElementFinder:
                 ctrl_center_y = ctrl_rect.top + ctrl_rect.height() // 2
                 
                 if direction == 'left':
-                    # Left: X is less, Y overlaps
+                    # 左: Xが小さい、Yが重なる
                     if ctrl_center_x < center_x and abs(ctrl_center_y - center_y) < rect.height():
                         distance = center_x - ctrl_center_x
                         candidates.append((distance, ctrl))
                 elif direction == 'right':
-                    # Right: X is greater, Y overlaps
+                    # 右: Xが大きい、Yが重なる
                     if ctrl_center_x > center_x and abs(ctrl_center_y - center_y) < rect.height():
                         distance = ctrl_center_x - center_x
                         candidates.append((distance, ctrl))
                 elif direction in ['up', 'above']:
-                    # Up: Y is less, X overlaps
+                    # 上: Yが小さい、Xが重なる
                     if ctrl_center_y < center_y and abs(ctrl_center_x - center_x) < rect.width():
                         distance = center_y - ctrl_center_y
                         candidates.append((distance, ctrl))
                 elif direction in ['down', 'below']:
-                    # Down: Y is greater, X overlaps
+                    # 下: Yが大きい、Xが重なる
                     if ctrl_center_y > center_y and abs(ctrl_center_x - center_x) < rect.width():
                         distance = ctrl_center_y - center_y
                         candidates.append((distance, ctrl))
