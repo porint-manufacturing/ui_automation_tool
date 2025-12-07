@@ -276,19 +276,19 @@ class ActionExecutor:
             return
         
         if value:
-            # Value provided: Treat element as a container and select child item
+            # 値が指定されている: 要素をコンテナとして扱い、子アイテムを選択
             self.logger.info(f"Selecting item '{value}' in '{element.Name}'...")
             
-            # Try to expand first if it's a combobox
+            # コンボボックスの場合は先に展開を試す
             expand = element.GetPattern(auto.PatternId.ExpandCollapsePattern)
             if expand:
                 try:
                     expand.Expand()
-                    time.sleep(0.5)  # Wait for expansion
+                    time.sleep(0.5)  # 展開を待機
                 except:
                     pass
             
-            # Find child item
+            # 子アイテムを検索
             item = element.ListItemControl(Name=value)
             if not item.Exists(maxSearchSeconds=1):
                 item = element.TreeItemControl(Name=value)
@@ -299,12 +299,12 @@ class ActionExecutor:
             if not item.Exists(maxSearchSeconds=1):
                 raise Exception(f"Item '{value}' not found in '{element.Name}'")
             
-            # Scroll into view if possible
+            # 可能であればスクロールして表示
             scroll = item.GetPattern(auto.PatternId.ScrollItemPattern)
             if scroll:
                 scroll.ScrollIntoView()
             
-            # Select the item
+            # アイテムを選択
             sel_item = item.GetPattern(auto.PatternId.SelectionItemPattern)
             if sel_item:
                 sel_item.Select()
@@ -317,7 +317,7 @@ class ActionExecutor:
                 else:
                     item.Click()
         else:
-            # No value: Select the element itself
+            # 値なし: 要素自体を選択
             self.logger.info(f"Selecting element '{element.Name}'...")
             sel_item = element.GetPattern(auto.PatternId.SelectionItemPattern)
             if sel_item:
@@ -334,17 +334,17 @@ class ActionExecutor:
             variables[value] = "[DryRunValue]"
             return
         
-        # Parse "var_name = property_name"
+        # "変数名 = プロパティ名" の形式を解析
         if "=" in value:
             parts = value.split("=", 1)
             var_name = parts[0].strip()
             prop_name = parts[1].strip()
         else:
-            # If no '=', use value as both var name and property name
+            # '='がない場合、valueを変数名とプロパティ名の両方として使用
             var_name = value
             prop_name = "Value"
         
-        # Get property value using element_finder
+        # element_finderを使用してプロパティ値を取得
         prop_value = self.element_finder.get_element_property(element, prop_name)
         variables[var_name] = prop_value
         
@@ -603,17 +603,17 @@ class ActionExecutor:
 
         self.logger.info(f"Exiting {target_app}...")
         try:
-            # Try WindowPattern.Close() first (cleanest method)
+            # まずWindowPattern.Close()を試す（最もクリーンな方法）
             pattern = window.GetPattern(auto.PatternId.WindowPattern)
             if pattern:
                 pattern.Close()
                 self.logger.info(f"Closed {target_app} using WindowPattern.Close()")
             else:
-                # Fallback: Set focus and send Alt+F4 to the specific window
+                # フォールバック: フォーカスを設定して特定のウィンドウにAlt+F4を送信
                 self.logger.info(f"WindowPattern not available, using SendKeys method")
                 window.SetFocus()
-                time.sleep(0.1)  # Brief wait to ensure focus is set
-                # Use window.SendKeys() instead of auto.SendKeys() to send to specific window
+                time.sleep(0.1)  # フォーカスが設定されるまで少し待機
+                # auto.SendKeys()の代わりにwindow.SendKeys()を使用して特定のウィンドウに送信
                 window.SendKeys('{Alt}{F4}')
                 self.logger.info(f"Sent Alt+F4 to {target_app}")
         except Exception as e:
