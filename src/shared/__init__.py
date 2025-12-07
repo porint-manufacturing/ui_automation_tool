@@ -1,1 +1,1 @@
-# Shared Utilities
+# 共有ユーティリティ

@@ -124,7 +124,7 @@ class ActionExecutor:
         elif act_type == "Exit":
             return self._execute_exit(window, target_app)
         
-        # Unknown action
+        # 不明なアクション
         raise NotImplementedError(f"Action type '{act_type}' not yet implemented in ActionExecutor")
 
     
@@ -157,7 +157,7 @@ class ActionExecutor:
             self.logger.info(f"[Dry-run] Would set variable: {value}")
             return
         
-        # Parse "var_name = expression"
+        # "変数名 = 式" の形式を解析
         match = re.match(r"(\w+)\s*=\s*(.+)", value)
         if not match:
             raise Exception(f"Invalid SetVariable format: {value}")
@@ -165,11 +165,11 @@ class ActionExecutor:
         var_name = match.group(1)
         expression = match.group(2).strip()
         
-        # Replace variables in expression
+        # 式内の変数を置換
         for v, val in variables.items():
             expression = expression.replace(f"{{{v}}}", str(val))
         
-        # Evaluate expression
+        # 式を評価
         try:
             result = eval(expression)
             variables[var_name] = result
@@ -185,7 +185,7 @@ class ActionExecutor:
         
         self.logger.info(f"Clicking element '{element.Name}'...")
         
-        # Try InvokePattern first, fallback to Click
+        # まずInvokePatternを試す、Clickにフォールバック
         try:
             invoke = element.GetPattern(auto.PatternId.InvokePattern)
             if invoke:
@@ -214,7 +214,7 @@ class ActionExecutor:
         self.logger.info(f"Inputting text: {value}")
         success = False
         
-        # Try ValuePattern first
+        # まずValuePatternを試す
         try:
             pattern = element.GetPattern(auto.PatternId.ValuePattern)
             if pattern:
@@ -226,7 +226,7 @@ class ActionExecutor:
         
         if not success:
             self.logger.debug("Fallback to SendKeys...")
-            # Set focus with Win32 API fallback
+            # Win32 APIフォールバックでフォーカス設定
             key_display = self.element_finder.format_path_with_alias(key) if key else element.Name
             self.focus_manager.set_focus_with_fallback(element, key_display)
             auto.SendKeys(value)
@@ -239,18 +239,18 @@ class ActionExecutor:
         
         self.logger.info(f"Invoking element '{element.Name}'...")
         
-        # Set focus with Win32 API fallback (legacy app support)
+        # Win32 APIフォールバックでフォーカス設定（レガシーアプリサポート）
         key_display = self.element_finder.format_path_with_alias(key) if key else element.Name
         self.focus_manager.set_focus_with_fallback(element, key_display)
         
-        # Proceed with invoke
+        # Invokeを実行
         pattern = element.GetPattern(auto.PatternId.InvokePattern)
         if pattern:
             pattern.Invoke()
             if self.wait_time is not None:
                 time.sleep(self.wait_time)
         else:
-            # Fallback to Toggle if Invoke not supported (e.g. Checkbox)
+            # Invokeがサポートされていない場合はToggleにフォールバック（例: チェックボックス）
             toggle = element.GetPattern(auto.PatternId.TogglePattern)
             if toggle:
                 self.logger.info("Invoke pattern not found, using Toggle pattern...")
@@ -374,7 +374,7 @@ class ActionExecutor:
         
         self.logger.info(f"Focusing element '{element_desc}'...")
         
-        # Set focus with Win32 API fallback
+        # Win32 APIフォールバックでフォーカス設定
         success = self.focus_manager.set_focus_with_fallback(element, element_desc)
         
         if success:
@@ -438,11 +438,11 @@ class ActionExecutor:
             var_name = parts[0].strip()
             right_side = parts[1].strip()
             
-            # Check for offset (e.g. + 1, - 1)
+            # オフセットをチェック（例: + 1, - 1）
             offset = 0
             fmt = right_side
             
-            # Regex to find offset at the end: "format + 1" or "format - 5"
+            # 末尾のオフセットを見つける正規表現: "format + 1" または "format - 5"
             match = re.search(r'^(.*)\s*([+-])\s*(\d+)$', right_side)
             if match:
                 fmt = match.group(1).strip()
@@ -453,7 +453,7 @@ class ActionExecutor:
                 else:
                     offset = -num
 
-            # Convert C# style format to Python strftime format
+            # C#スタイル形式をPython strftime形式に変換
             fmt = fmt.replace("yyyy", "%Y")
             fmt = fmt.replace("MM", "%m")
             fmt = fmt.replace("dd", "%d")
@@ -559,7 +559,7 @@ class ActionExecutor:
                     self.logger.info(f"Element is gone.")
                     return
             except:
-                # If find raises exception (e.g. parent gone), then it's gone
+                # findが例外を発生させた場合（例: 親が消えた）、要素は消えている
                 self.logger.info(f"Element is gone (exception).")
                 return
             time.sleep(0.5)

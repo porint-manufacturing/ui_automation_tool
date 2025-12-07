@@ -224,7 +224,7 @@ class ElementFinder:
         center_x = rect.left + rect.width() // 2
         center_y = rect.top + rect.height() // 2
         
-        # Get all controls in the window
+        # ウィンドウ内の全コントロールを取得
         all_controls = []
         def collect_controls(ctrl):
             all_controls.append(ctrl)
@@ -237,7 +237,7 @@ class ElementFinder:
             self.logger.debug(f"Error collecting controls: {e}")
             return None
         
-        # Filter and find nearest element
+        # 最も近い要素をフィルタリングして検索
         candidates = []
         for ctrl in all_controls:
             if ctrl == element:
