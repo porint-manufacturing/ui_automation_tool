@@ -9,13 +9,13 @@ import io
 import ctypes
 import os
 
-# Enable High DPI Awareness to ensure correct coordinates
+# 正確な座標を確保するためにHigh DPI Awarenessを有効化
 try:
     auto.SetProcessDpiAwareness(2) # Process_PerMonitorDpiAware
 except Exception:
     pass
 
-# Add src to path for imports (same as automator.py)
+# インポート用にsrcをパスに追加（automator.pyと同じ）
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.inspector.core import PathGenerator
@@ -36,8 +36,8 @@ class Inspector:
 
     def get_rpa_path(self, control):
         """
-        Generates a robust RPA path for the control.
-        Delegates to PathGenerator.
+        コントロールの堅牢なRPAパスを生成する
+        PathGeneratorに委譲
         """
         return self.path_generator.get_rpa_path(control)
 
@@ -99,14 +99,14 @@ class Inspector:
                 print("\nFinishing...")
                 break
                 
-            # Check for left click (0x01) or right click (0x02)
+            # 左クリック (0x01) または右クリック (0x02) をチェック
             if (ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000) or \
                (ctypes.windll.user32.GetAsyncKeyState(0x02) & 0x8000):
                 x, y = auto.GetCursorPos()
                 control = auto.ControlFromPoint(x, y)
                 
                 if control:
-                    # Debounce
+                    # デバウンス
                     if not last_element or not auto.ControlsAreSame(control, last_element):
                         self.inspect_element(control, x, y)
                         last_element = control
@@ -120,30 +120,30 @@ class Inspector:
                 time.sleep(0.05)
 
     def wait_for_click(self):
-        """Waits for a left or right click. Delegates to ClickHandler."""
+        """左または右クリックを待機。ClickHandlerに委譲"""
         return self.click_handler.wait_for_click()
 
     def inspect_element(self, control, x, y):
         print(f"\n[Clicked at {x}, {y}] Inspecting...")
         
-        # Basic info
+        # 基本情報
         print(f"  Name: {control.Name}")
         print(f"  Type: {control.ControlTypeName}")
         print(f"  Class: {control.ClassName}")
         print(f"  AutoId: {control.AutomationId}")
         
-        # Get TargetApp (Window Name)
-        # We use the TopLevelControl's Name as the TargetApp identifier.
-        # This corresponds to the 'Name' or 'RegexName' used in Automator's find_window.
+        # TargetApp（ウィンドウ名）を取得
+        # TopLevelControlのNameをTargetApp識別子として使用
+        # AutomatorのFind_windowで使用される'Name'または'RegexName'に対応
         root = control.GetTopLevelControl()
         target_app = root.Name if root else "Unknown"
         print(f"  TargetApp: {target_app}")
         
-        # Generate Path
+        # パス生成
         rpa_path = self.get_rpa_path(control)
         print(f"  RPA_Path: {rpa_path}")
         
-        # Record
+        # 記録
         if self.output in ["csv", "clipboard", "alias"]:
             self.recorded_items.append({
                 "TargetApp": target_app,
@@ -154,7 +154,7 @@ class Inspector:
             print(f"  -> Recorded ({len(self.recorded_items)} items)")
 
     def finalize(self):
-        """Output recorded items. Delegates to OutputHandler."""
+        """記録されたアイテムを出力。OutputHandlerに委譲"""
         self.output_handler.finalize(self.recorded_items)
 
 if __name__ == "__main__":

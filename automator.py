@@ -1,7 +1,7 @@
 import sys
 import os
 
-# Add current directory to Python path for module imports
+# モジュールインポート用にカレントディレクトリをPythonパスに追加
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import csv
@@ -18,23 +18,23 @@ from src.automator.utils.screenshot import capture_screenshot
 from src.automator.core.element_finder import ElementFinder
 from src.automator.core.action_executor import ActionExecutor
 
-# Enable High DPI Awareness to ensure correct coordinates
+# 正確な座標を確保するためにHigh DPI Awarenessを有効化
 try:
     auto.SetProcessDpiAwareness(2) # Process_PerMonitorDpiAware
 except Exception:
-    pass # Ignore if not supported (e.g. older Windows)
+    pass # サポートされていない場合は無視（例: 古いWindows）
 
 class Automator:
     def __init__(self, action_files, log_file=None, log_level="INFO", dry_run=False, force_run=False, wait_time=None):
         self.actions = []
         self.variables = {}
-        self.aliases = {}  # alias_name -> rpa_path
-        self.reverse_aliases = {}  # rpa_path -> alias_name (for error messages)
+        self.aliases = {}  # エイリアス名 -> RPAパス
+        self.reverse_aliases = {}  # RPAパス -> エイリアス名（エラーメッセージ用）
         self.dry_run = dry_run
         self.force_run = force_run
-        self.wait_time = wait_time  # None means use library default
+        self.wait_time = wait_time  # Noneはライブラリデフォルトを使用
         
-        # Configure logging
+        # ロギング設定
         level = getattr(logging, log_level.upper(), logging.INFO)
         handlers = [logging.StreamHandler(sys.stdout)]
         if log_file:
@@ -44,21 +44,21 @@ class Automator:
             level=level,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=handlers,
-            force=True # Reconfigure if already configured
+            force=True # 既に設定されている場合は再設定
         )
         self.logger = logging.getLogger(__name__)
         
-        # Initialize FocusManager
+        # FocusManager初期化
         self.focus_manager = FocusManager(force_run=force_run)
         
-        # Initialize ElementFinder
+        # ElementFinder初期化
         self.element_finder = ElementFinder(
             logger=self.logger,
             aliases=self.aliases,
             reverse_aliases=self.reverse_aliases
         )
         
-        # Initialize ActionExecutor
+        # ActionExecutor初期化
         self.action_executor = ActionExecutor(
             logger=self.logger,
             element_finder=self.element_finder,
@@ -68,7 +68,7 @@ class Automator:
             wait_time=self.wait_time
         )
         
-        # Ensure action_files is a list
+        # action_filesがリストであることを確保
         if isinstance(action_files, str):
             self.action_files = [action_files]
         else:
@@ -78,7 +78,7 @@ class Automator:
             self.logger.info("=== DRY RUN MODE ENABLED ===")
 
     def load_aliases(self, alias_files):
-        """Loads aliases from one or more CSV files."""
+        """1つ以上のCSVファイルからエイリアスを読み込む"""
         if isinstance(alias_files, str):
             alias_files = [alias_files]
             
@@ -94,7 +94,7 @@ class Automator:
                             if alias in self.aliases:
                                 self.logger.warning(f"Duplicate alias '{alias}' found in {alias_file}. Overwriting.")
                             self.aliases[alias] = path
-                            self.reverse_aliases[path] = alias  # Build reverse lookup
+                            self.reverse_aliases[path] = alias  # 逆引きを構築
             except Exception as e:
                 self.logger.error(f"Error loading aliases from {alias_file}: {e}")
                 sys.exit(1)
@@ -107,13 +107,13 @@ class Automator:
                 with open(csv_file, 'r', encoding='utf-8-sig') as f:
                     reader = csv.DictReader(f)
                     for row in reader:
-                        # Resolve alias if present
+                        # エイリアスが存在する場合は解決
                         key = row.get("Key", "")
                         if key and key in self.aliases:
                             self.logger.debug(f"Resolved alias '{key}' -> '{self.aliases[key]}'")
                             row["Key"] = self.aliases[key]
                         
-                        # Normalize action type
+                        # アクションタイプを正規化
                         act_type = row.get("Action", "")
                         if act_type.upper() == "IF": row["Action"] = "If"
                         elif act_type.upper() == "ELSE": row["Action"] = "Else"
@@ -131,24 +131,24 @@ class Automator:
         self.logger.info(f"Loaded {len(self.actions)} actions total.")
 
     def evaluate_condition(self, condition):
-        """Evaluates a condition string like '{status} == 'OK''."""
-        # Replace variables
+        """{status} == 'OK' のような条件文字列を評価する"""
+        # 変数置換
         if '{' in condition and '}' in condition:
             for var_name, var_val in self.variables.items():
                 condition = condition.replace(f"{{{var_name}}}", str(var_val))
         
-        # Safety check: only allow simple comparisons
-        # This is a basic implementation. For production, use a safer parser.
+        # 安全性チェック: 単純な比較のみ許可
+        # これは基本的な実装。本番環境では、より安全なパーサーを使用すること。
         try:
-            # We use eval() here for flexibility, but it's risky if inputs are untrusted.
-            # Assuming CSVs are trusted.
+            # 柔軟性のためeval()を使用しているが、信頼できない入力には危険。
+            # CSVは信頼できると仮定。
             return eval(condition)
         except Exception as e:
             self.logger.error(f"Condition evaluation failed: {condition} - {e}")
             return False
 
     def find_matching_end(self, start_index, start_type):
-        """Finds the matching EndIf/Else/EndLoop for a given start action."""
+        """指定された開始アクションに対応するEndIf/Else/EndLoopを見つける"""
         nesting = 0
         for i in range(start_index + 1, len(self.actions)):
             act = self.actions[i].get('Action', '')
@@ -175,7 +175,7 @@ class Automator:
 
     def run(self):
         i = 0
-        loop_stack = [] # Stores (start_index, loop_info)
+        loop_stack = [] # (start_index, loop_info)を格納
         
         while i < len(self.actions):
             action = self.actions[i]
@@ -187,7 +187,7 @@ class Automator:
             if value is None:
                 value = ""
 
-            # Variable substitution for Value (except for control flow which handles it specifically)
+            # 変数置換（制御フロー以外のValue用、制御フローは個別に処理）
             if act_type not in ['If', 'Loop', 'SetVariable']:
                  if '{' in value and '}' in value:
                     for var_name, var_val in self.variables.items():
@@ -195,26 +195,26 @@ class Automator:
 
             self.logger.info(f"Target: {target_app}, Action: {act_type}, Value: {value}")
             
-            # --- Control Flow ---
+            # --- 制御フロー ---
             if act_type == 'If':
                 condition = value
                 result = self.evaluate_condition(condition)
                 self.logger.info(f"Condition '{condition}' evaluated to: {result}")
                 
                 if result:
-                    # Continue to next action (True block)
+                    # 次のアクションに続行（Trueブロック）
                     i += 1
                 else:
-                    # Jump to Else or EndIf
+                    # ElseまたはEndIfにジャンプ
                     jump_to = self.find_matching_end(i, 'If')
                     if jump_to == -1:
                         self.logger.error("Missing matching EndIf/Else for If")
                         break
                     
-                    # If we jumped to Else, we need to execute the Else block next (so i = jump_to + 1)
-                    # But wait, if we jump to Else, the next iteration will process 'Else' action?
-                    # No, 'Else' action itself should just jump to EndIf if encountered naturally.
-                    # If we jump TO Else, we want to enter the block AFTER Else.
+                    # Elseにジャンプした場合、Elseブロックの次を実行する必要がある（i = jump_to + 1）
+                    # しかし待て、Elseにジャンプした場合、次の反復で'Else'アクションを処理する？
+                    # いいえ、'Else'アクション自体は自然に遇遇した場合、初めてEndIfにジャンプするべき。
+                    # Elseにジャンプする場合、Elseの後のブロックに入る必要がある。
                     
                     next_act = self.actions[jump_to].get('Action', '')
                     if next_act == 'Else':
@@ -224,17 +224,17 @@ class Automator:
                 continue
 
             elif act_type == 'Else':
-                # If we hit Else naturally, it means we executed the True block.
-                # So we must skip to EndIf.
-                # We need to find the EndIf corresponding to the If that started this block.
-                # But we don't have a reference to the start If here easily unless we track stack.
-                # Alternatively, we can just scan forward for EndIf, respecting nesting.
-                # Since we are inside an Else block (conceptually), we search for EndIf.
-                # But wait, 'Else' is at the same nesting level as 'If'.
+                # Elseに自然に達した場合、Trueブロックを実行したことを意味する。
+                # そのため、EndIfにスキップする必要がある。
+                # このブロックを開始したIfに対応するEndIfを見つける必要がある。
+                # しかし、スタックを追跡しない限り、ここでは開始Ifへの参照を簡単に持っていない。
+                # あるいは、単に前方にスキャンしてEndIfを見つけ、ネストを尊重する。
+                # Elseブロック内にいる（概念的に）、EndIfを検索する。
+                # しかし待て、'Else'は'If'と同じネストレベルにある。
                 
-                # Scan forward for EndIf
-                jump_to = self.find_matching_end(i, 'If') # Reuse If logic? No, If logic looks for Else/EndIf.
-                # We need a finder that looks for EndIf only.
+                # 前方にスキャンしてEndIfを検索
+                jump_to = self.find_matching_end(i, 'If') # Ifロジックを再利用？いいえ、IfロジックはElse/EndIfを探す。
+                # EndIfのみを探すファインダが必要。
                 
                 nesting = 0
                 found = -1
@@ -256,37 +256,37 @@ class Automator:
                 continue
 
             elif act_type == 'EndIf':
-                # Just continue
+                # 続行するだけ
                 i += 1
                 continue
 
             elif act_type == 'Loop':
-                # Check if this loop is already active
+                # このループが既にアクティブかどうかをチェック
                 active_loop = None
                 if loop_stack and loop_stack[-1][0] == i:
                     active_loop = loop_stack[-1]
                 
                 if active_loop:
-                    # Re-eval condition
+                    # 条件を再評価
                     condition = value
-                    # If value is a number, it's a count loop
+                    # valueが数値の場合、カウントループ
                     if value.isdigit():
-                         # Count is handled in state
-                         pass # Logic below
+                         # カウントは状態で処理
+                         pass # 以下のロジック
                     else:
-                         # Condition loop
+                         # 条件ループ
                          pass
                 else:
-                    # New loop entry
+                    # 新しいループエントリ
                     pass
 
-                # Unified Loop Logic
-                # If value is digit -> Count loop.
-                # Else -> Condition loop.
+                # 統一されたループロジック
+                # valueが数字 -> カウントループ
+                # それ以外 -> 条件ループ
                 
                 should_loop = False
                 
-                # Expand variables in value for evaluation
+                # 評価用にvalue内の変数を展開
                 eval_value = value
                 if '{' in eval_value and '}' in eval_value:
                     for var_name, var_val in self.variables.items():
@@ -294,25 +294,25 @@ class Automator:
 
                 if eval_value.isdigit():
                     max_count = int(eval_value)
-                    # Check stack
+                    # スタックをチェック
                     if loop_stack and loop_stack[-1][0] == i:
-                        # Increment counter
+                        # カウンタをインクリメント
                         loop_stack[-1][1]['current'] += 1
                         if loop_stack[-1][1]['current'] < max_count:
                             should_loop = True
                         else:
                             should_loop = False
-                            loop_stack.pop() # Loop finished
+                            loop_stack.pop() # ループ終了
                     else:
-                        # First entry
+                        # 最初のエントリ
                         if max_count > 0:
                             should_loop = True
                             loop_stack.append((i, {'type': 'count', 'current': 0, 'max': max_count}))
                         else:
                             should_loop = False
                 else:
-                    # Condition loop
-                    result = self.evaluate_condition(value) # Use original value with vars
+                    # 条件ループ
+                    result = self.evaluate_condition(value) # 変数を含む元のvalueを使用
                     if result:
                         should_loop = True
                         if not (loop_stack and loop_stack[-1][0] == i):
@@ -325,7 +325,7 @@ class Automator:
                 if should_loop:
                     i += 1
                 else:
-                    # Jump to EndLoop
+                    # EndLoopにジャンプ
                     jump_to = self.find_matching_end(i, 'Loop')
                     if jump_to == -1:
                         self.logger.error("Missing matching EndLoop")
@@ -334,7 +334,7 @@ class Automator:
                 continue
 
             elif act_type == 'EndLoop':
-                # Jump back to Loop start
+                # Loop開始位置に戻る
                 if loop_stack:
                     start_index = loop_stack[-1][0]
                     i = start_index
@@ -343,7 +343,7 @@ class Automator:
                     i += 1
                 continue
 
-            # --- Normal Action ---
+            # --- 通常アクション ---
             try:
                 self.execute_action(target_app, key, act_type, value)
             except Exception as e:
@@ -363,7 +363,7 @@ class Automator:
 
 
     def execute_action(self, target_app, key, act_type, value):
-        """Execute a single action by delegating to ActionExecutor"""
+        """単一アクションをActionExecutorに委譲して実行"""
         return self.action_executor.execute(target_app, key, act_type, value, self.variables)
 
 
